@@ -56,6 +56,17 @@ pipeline {
             }
         }
         
+        stage('Copy Deploy Files') {
+    		steps {
+        		sh '''
+            mkdir -p ${APP_DIR}/nginx
+            cp docker-compose.yml ${APP_DIR}/
+            cp .env ${APP_DIR}/
+            cp nginx/default.conf ${APP_DIR}/nginx/
+       	 '''
+    		}
+		}
+        
 
         stage('Rolling Deploy') {
             steps {
