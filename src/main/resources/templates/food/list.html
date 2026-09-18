@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI RESTAURANT - 맛집 목록</title>
+</head>
+
+<body>
+
+<main class="restaurant-page">
+
+    <!-- 페이지 제목 -->
+    <section class="page-title">
+
+        <div>
+            <span>AI RESTAURANT</span>
+
+            <h1>
+                맛집 찾기
+            </h1>
+
+            <p>
+                원하는 지역과 음식 종류를 선택해보세요.
+            </p>
+        </div>
+
+    </section>
+
+
+    <!-- ================= SEARCH ================= -->
+    <section class="search-area">
+
+        <div class="search-box">
+
+            <span>📍</span>
+
+            <input
+                type="text"
+                placeholder="지역 또는 맛집 이름을 입력하세요."
+                name="search"
+            >
+
+            <button>
+                검색
+            </button>
+
+        </div>
+
+    </section>
+
+    <!-- ================= LIST HEADER ================= -->
+    <section class="list-header">
+
+        <div>
+            <strong>맛집 목록</strong>
+            <span>총 [[${count}]]개의 맛집</span>
+        </div>
+
+        <select>
+            <option>추천순</option>
+            <option>평점순</option>
+            <option>리뷰순</option>
+            <option>거리순</option>
+        </select>
+
+    </section>
+
+
+    <!-- ================= RESTAURANT LIST ================= -->
+    <section class="restaurant-list">
+
+
+        <!-- 01 -->
+        <article class="restaurant-card" th:each="vo:${list}">
+
+            <div class="restaurant-image sushi">
+                <img th:src="${vo.poster}">
+            </div>
+
+            <div class="restaurant-info">
+
+                <div class="rating">
+                    ⭐ [[${vo.score}]]
+                </div>
+
+                <h3>
+                    [[${vo.name}]]
+                </h3>
+
+                <p>
+                    [[${vo.type}]]
+                </p>
+
+                <div class="tags">
+                    <span>[[${vo.theme}]]</span>
+                </div>
+
+                <button>
+                    자세히 보기 →
+                </button>
+
+            </div>
+        </article>
+    </section>
+
+
+    <!-- ================= PAGINATION ================= -->
+    <nav class="pagination">
+
+        <button class="page-arrow">
+            ‹
+        </button>
+
+        <button class="page active">
+            1
+        </button>
+
+        <button class="page">
+            2
+        </button>
+
+        <button class="page">
+            3
+        </button>
+
+        <button class="page">
+            4
+        </button>
+
+        <button class="page">
+            5
+        </button>
+
+        <span>
+            ...
+        </span>
+
+        <button class="page">
+            10
+        </button>
+
+        <button class="page-arrow">
+            ›
+        </button>
+
+    </nav>
+
+</main>
+
+</body>
+</html>

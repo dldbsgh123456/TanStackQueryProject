@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sist.web.mapper.FoodMapper">
+	<select id="foodListData" resultType="com.sist.web.vo.FoodVO" parameterType="hashmap">
+		SELECT no,poster,name,score,theme,type
+		FROM food
+		  <if test="search!=null and search!=''">
+		    WHERE address LIKE '%'||#{search}||'%'
+		  </if>
+		  ORDER BY no ASC
+		  OFFSET #{start} ROWS FETCH NEXT 12 ROWS ONLY
+	</select>
+	<!-- 
+	    trim / if / choose~when
+	    where / foreach 
+	 -->
+	<select id="foodTotalPage" resultType="int" parameterType="string">
+		SELECT COUNT(*)
+		FROM food
+		  <if test="search!=null and search!=''">
+		    WHERE address LIKE '%'||#{search}||'%'
+		  </if>
+	</select>
+</mapper>
