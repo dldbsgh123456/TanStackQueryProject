@@ -55,6 +55,16 @@ pipeline {
                 '''
             }
         }
+        
+        stage('Copy Deploy Files') {
+            steps {
+                sh '''
+                    mkdir -p ${APP_DIR}
+                    cp docker-compose.yml ${APP_DIR}/
+                    cp .env ${APP_DIR}/
+                '''
+            }
+        }
 
         stage('Rolling Deploy') {
             steps {
@@ -83,7 +93,7 @@ pipeline {
                     docker exec nginx nginx -s reload
 
                     echo "===== 배포 완료 ====="
-                '''
+                 '''
             }
         }
     }
