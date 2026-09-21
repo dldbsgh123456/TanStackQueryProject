@@ -17,7 +17,7 @@ services:
           "--no-verbose",
           "--tries=1",
           "--spider",
-          "http://13.125.160.99:8080/actuator/health"
+          "http://localhost:8080/actuator/health"
         ]
       interval: 10s
       timeout: 5s
