@@ -4,11 +4,19 @@ pipeline {
 
     environment {
 
-        // Docker Hub 이미지
+        // =====================================================
+        // Docker Hub
+        // =====================================================
         IMAGE_NAME = "leeyunho1234/react-app:latest"
 
-        // 배포 서버 디렉터리
-        APP_DIR = "/home/sist/app"
+        // =====================================================
+        // AWS EC2
+        // =====================================================
+        EC2_USER = "ubuntu"
+        EC2_HOST = "13.125.160.99"
+
+        // EC2 배포 디렉터리
+        EC2_APP_DIR = "/home/ubuntu/app"
     }
 
     stages {
@@ -25,30 +33,7 @@ pipeline {
                 checkout scm
             }
         }
-   
-         stage('Copy Deploy Files') {
 
-            steps {
-
-                sh '''
-                    echo "======================================"
-                    echo " Docker Compose / Nginx 파일 복사"
-                    echo "======================================"
-
-                    mkdir -p ${APP_DIR}
-
-                    cp docker-compose.yml ${APP_DIR}/docker-compose.yml
-
-                    cp nginx.conf ${APP_DIR}/nginx.conf
-
-                    echo "======================================"
-                    echo " 배포 파일 확인"
-                    echo "======================================"
-
-                    ls -al ${APP_DIR}
-                '''
-            }
-        }
 
         // =====================================================
         // 2. Gradle Build
@@ -67,7 +52,7 @@ pipeline {
                     ./gradlew clean build -x test
 
                     echo "======================================"
-                    echo " JAR 파일 확인"
+                    echo " JAR 확인"
                     echo "======================================"
 
                     ls -al build/libs
@@ -88,8 +73,7 @@ pipeline {
                     echo " Docker Build"
                     echo "======================================"
 
-                    docker build \
-                        -t ${IMAGE_NAME} .
+                    docker build -t ${IMAGE_NAME} .
 
                     echo "======================================"
                     echo " Docker Image 확인"
@@ -133,10 +117,6 @@ pipeline {
 
                         docker push ${IMAGE_NAME}
 
-                        echo "======================================"
-                        echo " Docker Hub Logout"
-                        echo "======================================"
-
                         docker logout
                     '''
                 }
@@ -145,9 +125,42 @@ pipeline {
 
 
         // =====================================================
-        // 5. .env 생성
+        // 5. EC2 배포 파일 전송
         // =====================================================
-        stage('Create .env') {
+        stage('Copy Deploy Files to EC2') {
+
+            steps {
+
+                sshagent(['ec2-ssh']) {
+
+                    sh '''
+                        echo "======================================"
+                        echo " EC2 배포 파일 전송"
+                        echo "======================================"
+
+                        ssh -o StrictHostKeyChecking=no \
+                            ${EC2_USER}@${EC2_HOST} \
+                            "mkdir -p ${EC2_APP_DIR}"
+
+                        scp -o StrictHostKeyChecking=no \
+                            docker-compose.yml \
+                            ${EC2_USER}@${EC2_HOST}:${EC2_APP_DIR}/docker-compose.yml
+
+                        scp -o StrictHostKeyChecking=no \
+                            nginx.conf \
+                            ${EC2_USER}@${EC2_HOST}:${EC2_APP_DIR}/nginx.conf
+
+                        echo "EC2 파일 전송 완료"
+                    '''
+                }
+            }
+        }
+
+
+        // =====================================================
+        // 6. EC2 .env 생성
+        // =====================================================
+        stage('Create EC2 .env') {
 
             steps {
 
@@ -170,96 +183,116 @@ pipeline {
 
                 ]) {
 
-                    sh '''
-                        echo "======================================"
-                        echo " .env 생성"
-                        echo "======================================"
+                    sshagent(['ec2-ssh']) {
 
-                        cat > ${APP_DIR}/.env <<EOF
+                        sh '''
+                            echo "======================================"
+                            echo " EC2 .env 생성"
+                            echo "======================================"
+
+                            ssh -o StrictHostKeyChecking=no \
+                                ${EC2_USER}@${EC2_HOST} \
+                                "cat > ${EC2_APP_DIR}/.env <<EOF
 SPRING_PROFILES_ACTIVE=prod
-LOCAL_DB_URL=${DB_URL}
+DB_URL=${DB_URL}
 DB_USERNAME=${DB_USERNAME}
 DB_PASSWORD=${DB_PASSWORD}
 EOF
+chmod 600 ${EC2_APP_DIR}/.env
+"
 
-                        chmod 644 ${APP_DIR}/.env
-
-                        echo ".env 생성 완료"
-                    '''
+                            echo "EC2 .env 생성 완료"
+                        '''
+                    }
                 }
             }
         }
 
 
         // =====================================================
-        // 6. Docker Compose 배포
+        // 7. EC2 Docker Compose 배포
         // =====================================================
-        stage('Rolling Deploy') {
+        stage('Deploy to EC2') {
 
             steps {
 
-                sh '''
-                    echo "======================================"
-                    echo " 배포 디렉터리"
-                    echo "======================================"
+                sshagent(['ec2-ssh']) {
 
-                    cd ${APP_DIR}
+                    sh '''
 
-                    echo "현재 위치:"
-                    pwd
+                        echo "======================================"
+                        echo " AWS EC2 배포"
+                        echo "======================================"
 
-                    echo "======================================"
-                    echo " 파일 확인"
-                    echo "======================================"
+                        ssh -o StrictHostKeyChecking=no \
+                            ${EC2_USER}@${EC2_HOST} << EOF
 
-                    ls -al
+                            echo "======================================"
+                            echo " EC2 접속 성공"
+                            echo "======================================"
 
-                    echo "======================================"
-                    echo " Docker Compose 설정 확인"
-                    echo "======================================"
+                            cd ${EC2_APP_DIR}
 
-                    docker compose config
+                            echo "현재 위치"
+                            pwd
 
-                    echo "======================================"
-                    echo " Docker Image Pull"
-                    echo "======================================"
+                            echo "======================================"
+                            echo " Docker Compose 설정 확인"
+                            echo "======================================"
 
-                    docker pull ${IMAGE_NAME}
+                            docker compose config
 
-                    echo "======================================"
-                    echo " Docker Compose 시작"
-                    echo "======================================"
+                            echo "======================================"
+                            echo " Docker Hub Login"
+                            echo "======================================"
 
-                    docker compose up -d --scale app=2
+                            echo "Docker Hub 로그인은 EC2에서 이미 설정되어 있어야 합니다."
 
-                    echo "======================================"
-                    echo " 컨테이너 확인"
-                    echo "======================================"
+                            echo "======================================"
+                            echo " Docker Image Pull"
+                            echo "======================================"
 
-                    docker compose ps
+                            docker pull ${IMAGE_NAME}
 
-                    echo "======================================"
-                    echo " Health Check 대기"
-                    echo "======================================"
+                            echo "======================================"
+                            echo " 기존 컨테이너 확인"
+                            echo "======================================"
 
-                    sleep 30
+                            docker compose ps
 
-                    echo "======================================"
-                    echo " Health Check 결과"
-                    echo "======================================"
+                            echo "======================================"
+                            echo " Docker Compose 배포"
+                            echo "======================================"
 
-                    docker compose ps
+                            docker compose up -d --scale app=2
 
-                    echo "======================================"
-                    echo " Nginx Reload"
-                    echo "======================================"
+                            echo "======================================"
+                            echo " 컨테이너 확인"
+                            echo "======================================"
 
-                    docker exec nginx nginx -s reload
+                            docker compose ps
 
-                    echo "======================================"
-                    echo " 배포 완료"
-                    echo "======================================"
-                '''
+                            echo "======================================"
+                            echo " Health Check 대기"
+                            echo "======================================"
+
+                            sleep 30
+
+                            docker compose ps
+
+                            echo "======================================"
+                            echo " Nginx Reload"
+                            echo "======================================"
+
+                            docker exec nginx nginx -s reload || true
+
+                            echo "======================================"
+                            echo " EC2 배포 완료"
+                            echo "======================================"
+
+EOF
+                    '''
+                }
             }
         }
     }
@@ -274,7 +307,7 @@ EOF
 
             echo '''
 ========================================
- Jenkins 배포 성공
+ Jenkins → AWS EC2 배포 성공
 ========================================
 '''
         }
@@ -283,7 +316,7 @@ EOF
 
             echo '''
 ========================================
- Jenkins 배포 실패
+ Jenkins → AWS EC2 배포 실패
 ========================================
 '''
         }
